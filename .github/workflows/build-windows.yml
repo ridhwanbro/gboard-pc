@@ -19,6 +19,13 @@ jobs:
         run: python test_corrections.py
       - name: Compile sources
         run: python -m py_compile gboard_pc_system.py avro_support.py test_corrections.py
+      - name: Work around missing Avro version metadata for PyInstaller hook
+        shell: pwsh
+        run: |
+          $avroDir = Join-Path (python -c "import site; print(site.getsitepackages()[0])") "avro"
+          if (Test-Path $avroDir) {
+            Set-Content -Path (Join-Path $avroDir "VERSION.txt") -Value "packaged by avro-py" -Encoding utf8
+          }
       - name: Build executable
         run: python -m PyInstaller --clean --onefile --windowed --name GBoard_PC gboard_pc_system.py
       - name: Upload executable artifact
