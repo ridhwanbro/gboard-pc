@@ -174,12 +174,23 @@ class App:
         self.root.after(80,self.poll)
     def show_float(self,vk):
         if self.float is None or not self.float.winfo_exists():
-            self.float=tk.Toplevel(self.root); self.float.overrideredirect(True); self.float.attributes("-topmost",True)
+            self.float=tk.Toplevel(self.root)
+            self.float.overrideredirect(True)
+            self.float.attributes("-topmost",True)
             self.float.configure(bg="#202124")
-            self.float_label=tk.Label(self.float,text="⌨  Gboard PC",font=("Segoe UI",11),bg="#202124",fg="white",padx=16,pady=9)
-            self.float_label.pack()
-        self.float_label.config(text=f"⌨  Typing…  ({vk})")
-        self.float.geometry(f"+{max(0,self.root.winfo_screenwidth()-250)}+{max(0,self.root.winfo_screenheight()-100)}")
+            tk.Label(self.float,text="Gboard PC",font=("Segoe UI",10,"bold"),bg="#202124",fg="#ffffff",pady=7).pack(fill="x")
+            self.key_labels=[]
+            rows=("QWERTYUIOP","ASDFGHJKL","ZXCVBNM")
+            for row_text in rows:
+                line=tk.Frame(self.float,bg="#202124")
+                line.pack(padx=6,pady=2)
+                for key in row_text:
+                    label=tk.Label(line,text=key,width=2,font=("Segoe UI",10),bg="#3c4043",fg="white",padx=3,pady=5)
+                    label.pack(side="left",padx=2)
+                    self.key_labels.append(label)
+            bottom=tk.Label(self.float,text="EN  ·  বাংলা",font=("Segoe UI",9),bg="#202124",fg="#bdc1c6",pady=6)
+            bottom.pack(fill="x")
+        self.float.geometry(f"+{max(0,self.root.winfo_screenwidth()-330)}+{max(0,self.root.winfo_screenheight()-180)}")
         if self.hide_job: self.root.after_cancel(self.hide_job)
         self.hide_job=self.root.after(1300,self.hide_float)
     def hide_float(self):
