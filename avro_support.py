@@ -1,4 +1,4 @@
-"""Roman Bangla adapter. Full Avro phonetic engine is optional."""
+"""Roman Bangla adapter with common-word overrides and optional Avro engine."""
 try:
     import avro as _avro
 except Exception:
@@ -12,11 +12,14 @@ _FALLBACK = {
     "dhonnobad":"ধন্যবাদ","shukriya":"শুকরিয়া","kothay":"কোথায়","ki":"কি",
     "keno":"কেন","na":"না","ha":"হ্যাঁ","hya":"হ্যাঁ","theke":"থেকে",
     "sob":"সব","kaj":"কাজ","shuru":"শুরু","baniye":"বানিয়ে","dao":"দাও",
-    "bhalo":"ভালো","chai":"চাই","jabo":"যাব","parbo":"পারব","hoy":"হয়",
-    "boi":"বই","amar":"আমার","phone":"ফোন","laptop":"ল্যাপটপ","word":"ওয়ার্ড"
+    "chai":"চাই","jabo":"যাব","parbo":"পারব","hoy":"হয়","boi":"বই",
+    "phone":"ফোন","laptop":"ল্যাপটপ","word":"ওয়ার্ড"
 }
 def roman_to_bangla(text):
     if not text: return text
+    # Prefer hand-verified common forms over engine variants.
+    if text.lower() in _FALLBACK:
+        return _FALLBACK[text.lower()]
     if _avro is not None:
         try:
             fn=getattr(_avro,"to_bangla",None) or getattr(_avro,"parse",None)
@@ -28,4 +31,4 @@ def roman_to_bangla(text):
                     if isinstance(v,str): return v
         except Exception:
             pass
-    return _FALLBACK.get(text.lower(),text)
+    return text
