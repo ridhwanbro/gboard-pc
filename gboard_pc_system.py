@@ -7,6 +7,11 @@ import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
 from avro_support import roman_to_bangla
+try:
+    from spellchecker import SpellChecker
+    SPELLCHECKER = SpellChecker()
+except Exception:
+    SPELLCHECKER = None
 
 DEFAULTS = {
     "teh":"the","adn":"and","taht":"that","thier":"their","recieve":"receive",
@@ -46,6 +51,12 @@ def correction_for(word, bangla_mode=False):
         out=roman_to_bangla(word)
         return out if out != word else None
     value=DEFAULTS.get(word.lower())
+    if not value and SPELLCHECKER is not None and len(word) > 1 and word.isascii():
+        # Preserve valid words, proper casing and acronyms. SpellChecker ships
+        # its offline English frequency dictionary in the Windows executable.
+        if word.lower() not in SPELLCHECKER:
+            candidate=SPELLCHECKER.correction(word.lower())
+            if candidate and candidate.lower() != word.lower(): value=candidate
     if not value: return None
     if word.isupper(): return value.upper()
     if word[:1].isupper(): return value[:1].upper()+value[1:]
@@ -169,7 +180,8 @@ class App:
                 kind,value=self.events.get_nowait()
                 if kind=="status": self.status.set(value)
                 elif kind=="activity":
-                    if self.mode.get()=="On Display": self.show_float(value)
+                    if self.hook.enabled and self.mode.get()=="On Display": self.show_float(value)
+                    elif self.mode.get()=="Non-display": self.hide_float()
         except queue.Empty: pass
         self.root.after(80,self.poll)
     def show_float(self,vk):
@@ -191,8 +203,8 @@ class App:
             bottom=tk.Label(self.float,text="EN  ·  বাংলা",font=("Segoe UI",9),bg="#202124",fg="#bdc1c6",pady=6)
             bottom.pack(fill="x")
         self.float.geometry(f"+{max(0,self.root.winfo_screenwidth()-330)}+{max(0,self.root.winfo_screenheight()-180)}")
-        if self.hide_job: self.root.after_cancel(self.hide_job)
-        self.hide_job=self.root.after(1300,self.hide_float)
+        # Keep the on-display keyboard open like a phone keyboard. It closes
+        # only when the user selects Non-display or disables the helper.
     def hide_float(self):
         if self.hide_job:
             try:self.root.after_cancel(self.hide_job)

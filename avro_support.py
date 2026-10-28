@@ -1,5 +1,7 @@
 """Roman Bangla adapter with common-word overrides and optional Avro engine."""
 try:
+    # ``avro.py`` is the maintained Python Avro Phonetic implementation.
+    # Its module is named ``avro`` (the old Apache Avro package is not used).
     import avro as _avro
 except Exception:
     _avro = None
@@ -22,13 +24,10 @@ def roman_to_bangla(text):
         return _FALLBACK[text.lower()]
     if _avro is not None:
         try:
-            fn=getattr(_avro,"to_bangla",None) or getattr(_avro,"parse",None)
+            fn=getattr(_avro,"parse",None)
             if callable(fn):
                 result=fn(text)
                 if isinstance(result,str): return result
-                for attr in ("bangla","text","output"):
-                    v=getattr(result,attr,None)
-                    if isinstance(v,str): return v
         except Exception:
             pass
     return text

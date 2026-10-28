@@ -27,7 +27,7 @@ jobs:
             Set-Content -Path (Join-Path $avroDir "VERSION.txt") -Value "packaged by avro-py" -Encoding utf8
           }
       - name: Build executable
-        run: python -m PyInstaller --clean --onefile --windowed --name GBoard_PC gboard_pc_system.py
+        run: python -m PyInstaller --clean --onefile --windowed --additional-hooks-dir hooks --collect-all avro --collect-all spellchecker --name GBoard_PC gboard_pc_system.py
       - name: Upload executable artifact
         uses: actions/upload-artifact@v4
         with:

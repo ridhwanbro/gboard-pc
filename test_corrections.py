@@ -5,7 +5,10 @@ cases=[("teh","the"),("Teh","The"),("TEH","THE"),("recieve","receive"),("unknown
 for src, expected in cases:
     got=correction_for(src,False)
     assert got==expected,(src,expected,got)
-for src,expected in [("ami","আমি"),("apni","আপনি"),("banglay","বাংলায়"),("khub","খুব")]:
+for src,expected in [("ami","আমি"),("apni","আপনি"),("banglay","বাংলায়"),("khub","খুব"),
+                     ("ami banglay gan gai","আমি বাংলায় গান গাই")]:
     got=roman_to_bangla(src)
     assert got==expected,(src,expected,got)
-print("PASS: 7 English correction + 4 Bangla adapter smoke tests")
+print("PASS: 7 English correction + 5 Bangla adapter smoke tests")
+assert correction_for("speling",False)=="spelling"
+print("PASS: offline English dictionary correction")
