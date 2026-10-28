@@ -1,3 +1,2 @@
-# Optional full phonetic engine; app has a built-in fallback dictionary.
-avro-py>=2024.9.1
+# Minimal build dependency. Common Roman Bangla words use the verified offline fallback dictionary.
 pyinstaller>=6.0
