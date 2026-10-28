@@ -25,3 +25,6 @@ An original Windows desktop typing helper inspired by mobile keyboard workflows;
 
 ## Local tests
 `python test_corrections.py`
+
+
+Build workflow: `.github/workflows/build-windows.yml` runs on pushes to the default branch.
