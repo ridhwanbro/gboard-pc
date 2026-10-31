@@ -12,7 +12,7 @@ An original Windows desktop typing helper inspired by mobile keyboard workflows;
 ## Build and download
 1. Open the [latest Windows release](https://github.com/ridhwanbro/gboard-pc/releases/latest).
 2. Download `GBoard_PC.exe` and double-click it. No ZIP extraction is needed.
-3. For Bangla, check **Avro Bangla mode**, click **Apply**, then type `ami` and press Space in another app.
+3. For Bangla, check **Avro Bangla mode**; it starts typing automatically. Type `ami` and press Space in another app. Click **Apply** only if you also want the floating keyboard.
 
 ## Important limitations
 - The app's global keyboard hook has not been tested on the user's Windows PC yet.
