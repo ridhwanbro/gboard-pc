@@ -16,7 +16,7 @@ for word, bangla, suffix, expected in [
     ("ami",True," ","আমি "),
     ("ami",True,",","আমি,"),
     ("teh",False," ","the "),
-    ("unknown",True," ",None),
+    ("",True," ",None),
 ]:
     got=replacement_for(word,bangla,suffix)
     assert got==expected,(word,bangla,suffix,expected,got)
