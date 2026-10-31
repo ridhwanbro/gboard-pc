@@ -5,15 +5,14 @@ An original Windows desktop typing helper inspired by mobile keyboard workflows;
 ## Features
 - Main window with **Apply** and **Disable**.
 - Offline English typo correction when Space is pressed, using a bundled English dictionary plus common fixes.
-- Avro phonetic Roman Bangla transliteration (e.g. `ami` → `আমি`) using the Avro-inspired `avro.py` engine and common-word overrides.
+- Avro phonetic Roman Bangla transliteration: enable **Avro Bangla mode**, click **Apply**, then type a Roman word and press Space or punctuation (e.g. `ami ` → `আমি `).
 - Floating keyboard indicator: **On Display** appears on first keypress and stays visible until **Non-display** or **Disable** is selected.
 - GitHub Actions builds a single-file Windows executable and publishes it as a downloadable workflow artifact.
 
 ## Build and download
-1. Open the **Actions** tab.
-2. Select **Build GBoard PC for Windows** and click **Run workflow** (or wait for the push-triggered build).
-3. Open the successful run and download the `GBoard_PC-Windows-x64` artifact.
-4. GitHub stores workflow artifacts as a ZIP; extract the ZIP and double-click `GBoard_PC.exe`.
+1. Open the [latest Windows release](https://github.com/ridhwanbro/gboard-pc/releases/latest).
+2. Download `GBoard_PC.exe` and double-click it. No ZIP extraction is needed.
+3. For Bangla, check **Avro Bangla mode**, click **Apply**, then type `ami` and press Space in another app.
 
 ## Important limitations
 - The app's global keyboard hook has not been tested on the user's Windows PC yet.
@@ -29,3 +28,4 @@ An original Windows desktop typing helper inspired by mobile keyboard workflows;
 
 
 Build workflow: `.github/workflows/build-windows.yml` runs on pushes to the default branch.
+
