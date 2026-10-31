@@ -4,21 +4,21 @@ An original Windows desktop typing helper inspired by mobile keyboard workflows;
 
 ## Features
 - Main window with **Apply** and **Disable**.
-- Basic English typo correction when Space is pressed.
-- Roman Bangla transliteration for a small offline starter dictionary (e.g. `ami` → `আমি`); this is not yet a full Avro engine.
-- Floating keyboard indicator: **On Display** shows while keys are being pressed and hides after idle; **Non-display** keeps it hidden.
+- Offline English typo correction when Space is pressed, using a bundled English dictionary plus common fixes.
+- Avro phonetic Roman Bangla transliteration: enable **Avro Bangla mode**, click **Apply**, then type a Roman word and press Space or punctuation (e.g. `ami ` → `আমি `).
+- Floating keyboard indicator: **On Display** appears on first keypress and stays visible until **Non-display** or **Disable** is selected.
 - GitHub Actions builds a single-file Windows executable and publishes it as a downloadable workflow artifact.
 
 ## Build and download
-1. Open the **Actions** tab.
-2. Select **Build GBoard PC for Windows** and click **Run workflow** (or wait for the push-triggered build).
-3. Open the successful run and download the `GBoard_PC-Windows-x64` artifact.
-4. GitHub stores workflow artifacts as a ZIP; extract the ZIP and double-click `GBoard_PC.exe`.
+1. Open the [latest Windows release](https://github.com/ridhwanbro/gboard-pc/releases/latest).
+2. Download `GBoard_PC.exe` and double-click it. No ZIP extraction is needed.
+3. For Bangla, check **Avro Bangla mode**; it starts typing automatically. Type `ami` and press Space in another app. Click **Apply** only if you also want the floating keyboard.
 
 ## Important limitations
 - The app's global keyboard hook has not been tested on the user's Windows PC yet.
 - This is a prototype; Microsoft Word and other apps need real-world testing.
-- Avro support currently uses a starter dictionary, not the complete Avro phonetic engine.
+- Bengali transliteration follows the Avro phonetic engine, but it is not the complete official Avro Windows keyboard or its selectable candidate dictionary UI.
+- English correction is offline and dictionary-based; it does not learn the user's vocabulary or match Google's cloud-backed Gboard suggestions.
 - It cannot provide the full Gboard suggestion bar, swipe typing, emoji catalogue, or pixel-identical phone UI.
 - Pause/disable before typing passwords or sensitive text.
 - Windows may show a security warning for an unsigned executable.
@@ -28,3 +28,4 @@ An original Windows desktop typing helper inspired by mobile keyboard workflows;
 
 
 Build workflow: `.github/workflows/build-windows.yml` runs on pushes to the default branch.
+

@@ -7,6 +7,11 @@ import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
 from avro_support import roman_to_bangla
+try:
+    from spellchecker import SpellChecker
+    SPELLCHECKER = SpellChecker()
+except Exception:
+    SPELLCHECKER = None
 
 DEFAULTS = {
     "teh":"the","adn":"and","taht":"that","thier":"their","recieve":"receive",
@@ -46,10 +51,22 @@ def correction_for(word, bangla_mode=False):
         out=roman_to_bangla(word)
         return out if out != word else None
     value=DEFAULTS.get(word.lower())
+    if not value and SPELLCHECKER is not None and len(word) > 1 and word.isascii():
+        # Preserve valid words, proper casing and acronyms. SpellChecker ships
+        # its offline English frequency dictionary in the Windows executable.
+        if word.lower() not in SPELLCHECKER:
+            candidate=SPELLCHECKER.correction(word.lower())
+            if candidate and candidate.lower() != word.lower(): value=candidate
     if not value: return None
     if word.isupper(): return value.upper()
     if word[:1].isupper(): return value[:1].upper()+value[1:]
     return value
+
+def replacement_for(word, bangla_mode=False, suffix=""):
+    """Return the replacement including its delimiter, or None if unchanged."""
+    value=correction_for(word,bangla_mode)
+    if not value or value==word: return None
+    return value+suffix
 
 class GlobalHook:
     def __init__(self, events):
@@ -97,11 +114,18 @@ class GlobalHook:
     def _replace(self,old,new):
         for _ in old: self._key(VK_BACK); self._key(VK_BACK,True)
         self._unicode(new)
-    def _correct(self):
-        old=self.word; new=correction_for(old,self.bangla)
-        if new and new != old:
-            self._replace(old,new); self.events.put(("status",f"{old} → {new}"))
+    def _correct(self,suffix=""):
+        old=self.word
+        new=replacement_for(old,self.bangla,suffix)
+        if new:
+            # Consume the physical delimiter and re-inject it after the text.
+            # Otherwise a space can land before SendInput's backspaces and
+            # leave the first Roman character behind in the target app.
+            self._replace(old,new); self.events.put(("status",f"{old} → {new.rstrip()}"))
+            self.word=""
+            return True
         self.word=""
+        return False
     def _run(self):
         self._api(); self.thread_id=kernel32.GetCurrentThreadId()
         Proc=ctypes.WINFUNCTYPE(ctypes.c_ssize_t,ctypes.c_int,wintypes.WPARAM,wintypes.LPARAM)
@@ -113,7 +137,7 @@ class GlobalHook:
                         vk=int(k.vkCode)
                         self.events.put(("activity",vk))
                         if vk==VK_SPACE:
-                            self._correct()
+                            if self._correct(" "): return 1
                         elif vk in (VK_RETURN,VK_TAB): self.word=""
                         elif vk==VK_BACK: self.word=self.word[:-1]
                         elif vk in (VK_ESCAPE,VK_LEFT,VK_UP,VK_RIGHT,VK_DOWN,VK_DELETE): self.word=""
@@ -121,7 +145,7 @@ class GlobalHook:
                             c=self._char(vk,int(k.scanCode))
                             if c and c.isalpha() and c.isascii(): self.word=(self.word+c)[-50:]
                             elif c and c.isprintable() and not c.isspace():
-                                if self.word: self._correct()
+                                if self.word and self._correct(c): return 1
                                 self.word=""
                 except Exception: pass
             return user32.CallNextHookEx(self.hook,n,w,l)
@@ -150,15 +174,17 @@ class App:
         tk.Label(panel,text="Floating keyboard",font=("Segoe UI",11,"bold"),bg="white").pack(anchor="w",padx=15,pady=(12,4))
         ttk.Radiobutton(panel,text="On Display (show while typing)",variable=self.mode,value="On Display").pack(anchor="w",padx=15,pady=3)
         ttk.Radiobutton(panel,text="Non-display (hide keyboard)",variable=self.mode,value="Non-display").pack(anchor="w",padx=15,pady=3)
-        ttk.Checkbutton(panel,text="Avro Bangla mode (ami → আমি)",variable=self.bangla,command=self.set_bangla).pack(anchor="w",padx=15,pady=(7,14))
+        ttk.Checkbutton(panel,text="Avro Bangla mode (type ami + Space → আমি)",variable=self.bangla,command=self.set_bangla).pack(anchor="w",padx=15,pady=(7,14))
         row=tk.Frame(root,bg="#f5f6fa"); row.pack(fill="x",padx=22)
         ttk.Button(row,text="Apply",command=self.apply).pack(side="left",expand=True,fill="x",ipady=7,padx=(0,6))
         ttk.Button(row,text="Disable",command=self.disable).pack(side="left",expand=True,fill="x",ipady=7,padx=(6,0))
-        self.status=tk.StringVar(value="Disabled — choose options and click Apply")
+        self.status=tk.StringVar(value="Enable Avro mode to type Bangla; click Apply for the floating keyboard")
         tk.Label(root,textvariable=self.status,wraplength=440,justify="left",bg="#f5f6fa",fg="#3c4043").pack(anchor="w",padx=25,pady=15)
         tk.Label(root,text="Prototype: pause before passwords. Not an official Google product.",font=("Segoe UI",8),bg="#f5f6fa",fg="#777").pack(anchor="w",padx=25)
         self.float=None; self.hide_job=None; self.root.after(80,self.poll); root.protocol("WM_DELETE_WINDOW",self.close)
-    def set_bangla(self): self.hook.bangla=self.bangla.get()
+    def set_bangla(self):
+        self.hook.bangla=self.bangla.get()
+        if self.hook.bangla: self.hook.start()
     def apply(self):
         self.set_bangla(); self.hook.start()
     def disable(self):
@@ -169,7 +195,8 @@ class App:
                 kind,value=self.events.get_nowait()
                 if kind=="status": self.status.set(value)
                 elif kind=="activity":
-                    if self.mode.get()=="On Display": self.show_float(value)
+                    if self.hook.enabled and self.mode.get()=="On Display": self.show_float(value)
+                    elif self.mode.get()=="Non-display": self.hide_float()
         except queue.Empty: pass
         self.root.after(80,self.poll)
     def show_float(self,vk):
@@ -191,8 +218,8 @@ class App:
             bottom=tk.Label(self.float,text="EN  ·  বাংলা",font=("Segoe UI",9),bg="#202124",fg="#bdc1c6",pady=6)
             bottom.pack(fill="x")
         self.float.geometry(f"+{max(0,self.root.winfo_screenwidth()-330)}+{max(0,self.root.winfo_screenheight()-180)}")
-        if self.hide_job: self.root.after_cancel(self.hide_job)
-        self.hide_job=self.root.after(1300,self.hide_float)
+        # Keep the on-display keyboard open like a phone keyboard. It closes
+        # only when the user selects Non-display or disables the helper.
     def hide_float(self):
         if self.hide_job:
             try:self.root.after_cancel(self.hide_job)
@@ -207,3 +234,4 @@ class App:
 
 if __name__=="__main__":
     root=tk.Tk(); App(root); root.mainloop()
+

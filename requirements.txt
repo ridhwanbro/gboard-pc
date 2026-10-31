@@ -1,2 +1,4 @@
 # Minimal build dependency. Common Roman Bangla words use the verified offline fallback dictionary.
 pyinstaller>=6.0
+avro.py==2024.7.29
+pyspellchecker>=0.8.2,<1.0
