@@ -174,15 +174,17 @@ class App:
         tk.Label(panel,text="Floating keyboard",font=("Segoe UI",11,"bold"),bg="white").pack(anchor="w",padx=15,pady=(12,4))
         ttk.Radiobutton(panel,text="On Display (show while typing)",variable=self.mode,value="On Display").pack(anchor="w",padx=15,pady=3)
         ttk.Radiobutton(panel,text="Non-display (hide keyboard)",variable=self.mode,value="Non-display").pack(anchor="w",padx=15,pady=3)
-        ttk.Checkbutton(panel,text="Avro Bangla mode (type ami, then Space → আমি)",variable=self.bangla,command=self.set_bangla).pack(anchor="w",padx=15,pady=(7,14))
+        ttk.Checkbutton(panel,text="Avro Bangla mode (type ami + Space → আমি)",variable=self.bangla,command=self.set_bangla).pack(anchor="w",padx=15,pady=(7,14))
         row=tk.Frame(root,bg="#f5f6fa"); row.pack(fill="x",padx=22)
         ttk.Button(row,text="Apply",command=self.apply).pack(side="left",expand=True,fill="x",ipady=7,padx=(0,6))
         ttk.Button(row,text="Disable",command=self.disable).pack(side="left",expand=True,fill="x",ipady=7,padx=(6,0))
-        self.status=tk.StringVar(value="Choose options, click Apply, then type in another app")
+        self.status=tk.StringVar(value="Enable Avro mode to type Bangla; click Apply for the floating keyboard")
         tk.Label(root,textvariable=self.status,wraplength=440,justify="left",bg="#f5f6fa",fg="#3c4043").pack(anchor="w",padx=25,pady=15)
         tk.Label(root,text="Prototype: pause before passwords. Not an official Google product.",font=("Segoe UI",8),bg="#f5f6fa",fg="#777").pack(anchor="w",padx=25)
         self.float=None; self.hide_job=None; self.root.after(80,self.poll); root.protocol("WM_DELETE_WINDOW",self.close)
-    def set_bangla(self): self.hook.bangla=self.bangla.get()
+    def set_bangla(self):
+        self.hook.bangla=self.bangla.get()
+        if self.hook.bangla: self.hook.start()
     def apply(self):
         self.set_bangla(); self.hook.start()
     def disable(self):
