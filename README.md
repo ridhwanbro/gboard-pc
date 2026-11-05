@@ -1,30 +1,29 @@
-# GBoard PC + Avro Bangla (Windows prototype)
+# Gboard PC
 
-An original Windows desktop typing helper inspired by mobile keyboard workflows; it is **not** an official or pixel-perfect Google Gboard copy.
+An offline Bangla (Bengali) keyboard for Windows 10 and 11, using Avro Phonetic transliteration.
+
+## Download
+
+Download **Gboard_PC.exe** from the latest GitHub Release and run it directly. It is a single-file app and does not require Python or an installer.
 
 ## Features
-- Main window with **Apply** and **Disable**.
-- Basic English typo correction when Space is pressed.
-- Roman Bangla transliteration for a small offline starter dictionary (e.g. `ami` → `আমি`); this is not yet a full Avro engine.
-- Floating keyboard indicator: **On Display** shows while keys are being pressed and hides after idle; **Non-display** keeps it hidden.
-- GitHub Actions builds a single-file Windows executable and publishes it as a downloadable workflow artifact.
 
-## Build and download
-1. Open the **Actions** tab.
-2. Select **Build GBoard PC for Windows** and click **Run workflow** (or wait for the push-triggered build).
-3. Open the successful run and download the `GBoard_PC-Windows-x64` artifact.
-4. GitHub stores workflow artifacts as a ZIP; extract the ZIP and double-click `GBoard_PC.exe`.
+- Apply and Disable controls, with English and Avro Phonetic (বাংলা) modes.
+- Global mode toggle: Ctrl+Alt+Shift+Space.
+- Floating QWERTY keyboard with Bangla letters, or tray-only mode.
+- Up to three suggestions; Ctrl+Alt+Shift+Q/W/E selects them.
+- Offline dictionary and word correction.
+- Text box with copy, clipboard, save-as-text and clear controls.
+- Typed text is handled locally; the app makes no network requests or input history.
 
-## Important limitations
-- The app's global keyboard hook has not been tested on the user's Windows PC yet.
-- This is a prototype; Microsoft Word and other apps need real-world testing.
-- Avro support currently uses a starter dictionary, not the complete Avro phonetic engine.
-- It cannot provide the full Gboard suggestion bar, swipe typing, emoji catalogue, or pixel-identical phone UI.
-- Pause/disable before typing passwords or sensitive text.
-- Windows may show a security warning for an unsigned executable.
+## Source and license
 
-## Local tests
-`python test_corrections.py`
+The Windows app source is `GboardPC.py`. The release includes the matching source and GPL-3.0 license as separate assets. Avro patterns are based on OmicronLab's Avro Phonetic implementation; dictionary seed data is from Minhas Kamal's BengaliDictionary.
 
+## Build from source
 
-Build workflow: `.github/workflows/build-windows.yml` runs on pushes to the default branch.
+Use Python 3.12, then install `pyinstaller`, `pystray` and `pillow`. Build with:
+
+```text
+python -m PyInstaller --noconfirm --clean --onefile --windowed --name Gboard_PC --collect-all pystray --collect-all PIL GboardPC.py
+```
