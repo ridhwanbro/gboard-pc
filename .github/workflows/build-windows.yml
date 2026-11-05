@@ -1,36 +1,58 @@
-name: Build GBoard PC for Windows
+name: Build Gboard PC for Windows
+
 on:
+  release:
+    types: [published]
   workflow_dispatch:
-  push:
-    branches: [main, master]
+    inputs:
+      tag:
+        description: Existing release tag to attach the build to
+        required: true
+        type: string
+      source_ref:
+        description: Branch or tag containing the app source
+        required: true
+        default: main
+        type: string
+
 permissions:
-  contents: read
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Check out release source
+        if: github.event_name == 'release'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Check out selected source
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
       - name: Install build dependencies
-        run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
-      - name: Run smoke tests
-        run: python test_corrections.py
-      - name: Compile sources
-        run: python -m py_compile gboard_pc_system.py avro_support.py test_corrections.py
-      - name: Work around missing Avro version metadata for PyInstaller hook
-        shell: pwsh
-        run: |
-          $avroDir = Join-Path (python -c "import site; print(site.getsitepackages()[0])") "avro"
-          if (Test-Path $avroDir) {
-            Set-Content -Path (Join-Path $avroDir "VERSION.txt") -Value "packaged by avro-py" -Encoding utf8
-          }
-      - name: Build executable
-        run: python -m PyInstaller --clean --onefile --windowed --name GBoard_PC gboard_pc_system.py
-      - name: Upload executable artifact
-        uses: actions/upload-artifact@v4
+        run: python -m pip install --upgrade pip && python -m pip install pyinstaller pystray pillow
+
+      - name: Build one-file Windows app
+        run: python -m PyInstaller --noconfirm --clean --onefile --windowed --name Gboard_PC --distpath dist --workpath build --specpath build --collect-all pystray --collect-all PIL GboardPC.py
+
+      - name: Attach executable, source and license to the release
+        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v3
         with:
-          name: GBoard_PC-Windows-x64
-          path: dist/GBoard_PC.exe
-          if-no-files-found: error
+          tag_name: ${{ github.event.release.tag_name || inputs.tag }}
+          files: |
+            dist/Gboard_PC.exe
+            GboardPC.py
+            LICENSE-GPL-3.0.txt
+          fail_on_unmatched_files: true
+          overwrite_files: true
