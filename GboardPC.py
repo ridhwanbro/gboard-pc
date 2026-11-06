@@ -28,6 +28,7 @@ import queue
 import re
 import threading
 import tkinter as tk
+import unicodedata
 from ctypes import wintypes
 from tkinter import filedialog, messagebox, ttk
 
@@ -245,8 +246,6 @@ def _unpack_text(payload: str) -> str:
 
 AVRO_SPEC = json.loads(_unpack_text(AVRO_SPEC_GZIP_B64))["data"]
 PATTERNS = AVRO_SPEC["patterns"]
-NON_RULE_PATTERNS = [item for item in PATTERNS if "rules" not in item]
-RULE_PATTERNS = [item for item in PATTERNS if "rules" in item]
 VOWELS = set(AVRO_SPEC["vowel"])
 CONSONANTS = set(AVRO_SPEC["consonant"])
 CASE_SENSITIVE = set(AVRO_SPEC["casesensitive"])
@@ -263,6 +262,11 @@ def _is_consonant(char: str) -> bool:
 
 def _is_punctuation(char: str) -> bool:
     return not (_is_vowel(char) or _is_consonant(char))
+
+
+def _is_vowel_pattern(pattern: str) -> bool:
+    """Return true for an Avro pattern made only of Roman vowel keys."""
+    return bool(pattern) and all(_is_vowel(char) for char in pattern)
 
 
 def _fix_case(text: str) -> str:
@@ -290,7 +294,7 @@ def _rule_match(rule_match: dict, text: str, start: int, end: int) -> bool:
         else:
             exact_start, exact_end = end, end + len(value)
         # Match pyAvroPhonetic's boundary handling for its exact-scope rules.
-        actual = exact_start >= 0 and exact_end < len(text) and text[exact_start:exact_end] == value
+        actual = exact_start >= 0 and exact_end <= len(text) and text[exact_start:exact_end] == value
     else:
         actual = False
     return actual ^ negative
@@ -311,18 +315,24 @@ def avro_parse(text: str) -> str:
     for cursor, char in enumerate(fixed):
         if cursor < processed_to:
             continue
-        found = next((p for p in NON_RULE_PATTERNS
-                      if fixed.startswith(p["find"], cursor)), None)
-        if found is not None:
-            output.append(found["replace"])
-            processed_to = cursor + len(found["find"])
-            continue
-        found = next((p for p in RULE_PATTERNS
+        # Keep OmicronLab's original order across *all* patterns. Searching
+        # non-rule and rule patterns in separate passes can let a shorter
+        # consonant match steal the beginning of a vowel/conjunct sequence.
+        found = next((p for p in PATTERNS
                       if fixed.startswith(p["find"], cursor)), None)
         if found is not None:
             processed_to = cursor + len(found["find"])
-            replacement = _rules_replace(found["rules"], fixed, cursor, processed_to)
-            output.append(found["replace"] if replacement is None else replacement)
+            previous = fixed[cursor - 1] if cursor else ""
+            if previous and _is_consonant(previous) and _is_vowel_pattern(found["find"]):
+                # A vowel pattern immediately after a consonant uses that
+                # pattern's dependent sign (kar). This explicitly preserves
+                # ke -> কে, kE -> কে, ki -> কি, and equivalent Avro forms.
+                output.append(found["replace"])
+            elif "rules" in found:
+                replacement = _rules_replace(found["rules"], fixed, cursor, processed_to)
+                output.append(found["replace"] if replacement is None else replacement)
+            else:
+                output.append(found["replace"])
         else:
             processed_to = cursor + 1
             output.append(char)
@@ -559,6 +569,31 @@ def send_unicode(text: str):
     _send_events(events)
 
 
+def _backspace_count(text: str) -> int:
+    """Count user-visible Unicode clusters for Windows Backspace replacement."""
+    count = 0
+    join_next = False
+    for char in text:
+        if char == "\u09cd":  # Bengali hasant joins the following consonant.
+            join_next = True
+            continue
+        if char == "\u200d":  # ZWJ also binds the next character to this cluster.
+            join_next = True
+            continue
+        if char == "\u200c":  # ZWNJ explicitly breaks a conjunct.
+            join_next = False
+            continue
+        if unicodedata.category(char).startswith("M"):
+            # Bengali vowel signs, nukta and nasal marks are part of the
+            # preceding visible character and should not get separate deletes.
+            continue
+        if join_next:
+            join_next = False
+            continue
+        count += 1
+    return count
+
+
 def send_vk(vk: int, count: int = 1):
     events = []
     for _ in range(max(0, count)):
@@ -686,6 +721,16 @@ class KeyboardEngine:
         elif vk is not None:
             send_vk(vk, count)
 
+    def _replace_rendered(self, text: str):
+        """Replace the visible preview of the active Roman word in-place."""
+        if text == self.rendered:
+            return
+        if self.rendered:
+            self._send_to_target(vk=VK_BACK, count=_backspace_count(self.rendered))
+        if text:
+            self._send_to_target(text=text)
+        self.rendered = text
+
     def feed_character(self, char: str, target=None):
         with self.lock:
             if not self.enabled or self.mode == "English":
@@ -699,14 +744,14 @@ class KeyboardEngine:
                     self.active_hwnd = self.active_hwnd or user32.GetForegroundWindow()
                 self.raw += char
                 rendered = word_output(self.raw)
-                self._send_to_target(vk=VK_BACK, count=len(self.rendered))
-                self._send_to_target(text=rendered)
-                self.rendered = rendered
+                self._replace_rendered(rendered)
                 self.events.put(("compose", self.raw, suggestions(self.raw)))
             elif char == " ":
                 self._commit(" ")
-            elif char == "\r":
+            elif char in ("\r", "\n"):
                 self._commit("\n")
+            elif char.isspace():
+                self._commit(char)
             else:
                 self._commit(avro_parse(char))
 
@@ -729,8 +774,7 @@ class KeyboardEngine:
         plain = word_output(raw) if raw else ""
         corrected = autocorrect(raw, plain) if raw else ""
         if raw:
-            self._send_to_target(vk=VK_BACK, count=len(self.rendered))
-            self._send_to_target(text=corrected)
+            self._replace_rendered(corrected)
         if separator == "\n":
             self._send_to_target(vk=VK_RETURN)
             separator_for_undo = "\n"
@@ -752,13 +796,11 @@ class KeyboardEngine:
             if self.raw:
                 self.raw = self.raw[:-1]
                 rendered = word_output(self.raw) if self.raw else ""
-                self._send_to_target(vk=VK_BACK, count=len(self.rendered))
-                self._send_to_target(text=rendered)
-                self.rendered = rendered
+                self._replace_rendered(rendered)
                 self.events.put(("compose", self.raw, suggestions(self.raw)))
             elif self.commits:
                 raw, plain, corrected, separator = self.commits.pop()
-                erase_count = len(separator) + len(corrected)
+                erase_count = _backspace_count(corrected + separator)
                 if erase_count:
                     self._send_to_target(vk=VK_BACK, count=erase_count)
                 self._send_to_target(text=plain)
@@ -778,8 +820,7 @@ class KeyboardEngine:
             raw = self.raw
             plain = word_output(raw)
             chosen = options[index]
-            self._send_to_target(vk=VK_BACK, count=len(self.rendered))
-            self._send_to_target(text=chosen)
+            self._replace_rendered(chosen)
             self.commits.append((raw, plain, chosen, ""))
             self.raw = ""
             self.rendered = ""
