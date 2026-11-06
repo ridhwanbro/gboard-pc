@@ -379,6 +379,9 @@ DICTIONARY_WORD_COUNT = len(set(DICTIONARY.values()))
 if DICTIONARY_WORD_COUNT < 2000:
     raise RuntimeError("The bundled offline Bangla dictionary is incomplete.")
 
+BENGALI_LETTER_RE = re.compile(r"[\u0980-\u09ff]")
+LATIN_LETTER_RE = re.compile(r"[A-Za-z]")
+
 
 def _edit_distance_one(left: str, right: str) -> bool:
     if left == right:
@@ -417,7 +420,12 @@ def suggestions(roman: str) -> list[str]:
     candidates = []
 
     def add(value):
-        if value and value not in candidates:
+        # Keep the suggestion strip in Bengali script. Unknown or partial
+        # Roman text can still be typed, but it should not appear as a Bangla
+        # candidate chip unless the transliterator has produced Bengali text.
+        if (value and value not in candidates
+                and BENGALI_LETTER_RE.search(value)
+                and not LATIN_LETTER_RE.search(value)):
             candidates.append(value)
 
     add(word_output(roman))
@@ -1003,7 +1011,7 @@ class GboardPC:
         keyboard_card.pack(fill="x", pady=(0, 12))
         title_row = ttk.Frame(keyboard_card, style="Card.TFrame")
         title_row.pack(fill="x")
-        ttk.Label(title_row, text="Suggestions", style="CardTitle.TLabel").pack(side="left")
+        ttk.Label(title_row, text="বাংলা সাজেশন", style="CardTitle.TLabel").pack(side="left")
         ttk.Label(title_row, text=SUGGESTION_HOTKEY_LABEL, style="Body.TLabel").pack(side="right")
         suggest_row = ttk.Frame(keyboard_card, style="Card.TFrame")
         suggest_row.pack(fill="x", pady=(8, 12))
